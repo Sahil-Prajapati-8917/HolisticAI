@@ -1,0 +1,7 @@
+{
+  "name": "HolisticAI Resume Evaluator",
+  "description": "An enterprise-grade AI-driven platform for automated resume screening and holistic candidate evaluation based on custom hiring context.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
