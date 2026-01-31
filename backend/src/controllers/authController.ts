@@ -55,6 +55,34 @@ export const login = async (req: Request, res: Response) => {
     try {
         const { email, password } = req.body;
 
+        // Check for static credentials first
+        const staticEmail = process.env.STATIC_EMAIL;
+        const staticPassword = process.env.STATIC_PASSWORD;
+        const staticName = process.env.STATIC_NAME;
+        const staticRole = process.env.STATIC_ROLE;
+
+        if (email === staticEmail && password === staticPassword) {
+            // Static password authentication successful
+            const { accessToken, refreshToken } = generateTokens('static-user', staticRole || 'admin');
+
+            // Send refresh token in HTTP-only cookie
+            res.cookie('refreshToken', refreshToken, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'strict',
+                maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+            });
+
+            return res.json({
+                _id: 'static-user',
+                name: staticName || 'System Administrator',
+                email: staticEmail,
+                role: staticRole || 'admin',
+                accessToken,
+            });
+        }
+
+        // Fall back to database authentication
         const user = await User.findOne({ email });
 
         if (user && (await bcrypt.compare(password, user.passwordHash))) {
@@ -115,6 +143,23 @@ export const refresh = async (req: Request, res: Response) => {
 
     try {
         const decoded: any = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET || 'default_refresh_secret');
+        
+        // Check if this is a static user
+        if (decoded.id === 'static-user') {
+            // Generate new tokens for static user
+            const { accessToken, refreshToken: newRefreshToken } = generateTokens('static-user', process.env.STATIC_ROLE || 'admin');
+
+            res.cookie('refreshToken', newRefreshToken, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'strict',
+                maxAge: 7 * 24 * 60 * 60 * 1000,
+            });
+
+            return res.json({ accessToken });
+        }
+
+        // Handle database users
         const user = await User.findById(decoded.id);
 
         if (!user || user.refreshToken !== refreshToken) {
