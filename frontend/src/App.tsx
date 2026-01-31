@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect } from 'react';
-import { HashRouter, Routes, Route, useLocation } from 'react-router-dom';
+import { HashRouter, Routes, Route, useLocation, Outlet } from 'react-router-dom';
 import { AppShell } from './components/layout/AppShell';
 import Dashboard from './views/Dashboard';
 import HiringForms from './views/HiringForms';
@@ -14,13 +13,13 @@ import FairnessDashboard from './views/FairnessDashboard';
 import PublicApplication from './views/PublicApplication';
 import ApplicationsView from './views/Applications';
 import EmailConfig from './views/EmailConfig';
+import Login from './views/Login';
+import { AuthProvider } from './context/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
 import { HiringForm, EvaluationResult, Resume, Thresholds, SystemPrompt, CandidateStatus, Application, EmailTemplate, InterviewFeedback, CandidateProfile } from './types';
 import { INITIAL_HIRING_FORMS, INITIAL_SYSTEM_PROMPT, INITIAL_THRESHOLDS, INITIAL_EMAIL_TEMPLATES } from './constants';
 
 const AppContent: React.FC = () => {
-  const location = useLocation();
-  const isPublicRoute = location.pathname.startsWith('/apply/');
-
   const [hiringForms, setHiringForms] = useState<HiringForm[]>(INITIAL_HIRING_FORMS);
   const [activeFormId, setActiveFormId] = useState<string | null>(INITIAL_HIRING_FORMS[0].id);
   const [applications, setApplications] = useState<Application[]>([]);
@@ -95,34 +94,39 @@ const AppContent: React.FC = () => {
     setEvaluations(prev => prev.filter(e => e.resumeId !== id));
   };
 
-  const layout = isPublicRoute ? (
+  return (
     <Routes>
+      <Route path="/login" element={<Login />} />
       <Route path="/apply/:slug" element={<PublicApplication forms={hiringForms} applications={applications} onSubmit={(app) => setApplications(prev => [app, ...prev])} />} />
-    </Routes>
-  ) : (
-    <AppShell>
-      <Routes>
-        <Route path="/" element={<Dashboard forms={hiringForms} resumes={resumes} evaluations={evaluations} />} />
-        <Route path="/forms" element={<HiringForms forms={hiringForms} onAdd={f => setHiringForms([f, ...hiringForms])} onUpdate={f => setHiringForms(prev => prev.map(old => old.id === f.id ? f : old))} onSetActive={setActiveFormId} activeId={activeFormId} />} />
-        <Route path="/prompts" element={<Prompts prompt={systemPrompt} setPrompt={setSystemPrompt} />} />
-        <Route path="/emails" element={<EmailConfig templates={emailTemplates} onUpdate={setEmailTemplates} />} />
-        <Route path="/uploads" element={<Uploads activeForm={activeRole} forms={hiringForms} resumes={resumes} onUpload={handleManualUpload} onStatusUpdate={handleManualStatusUpdate} onComplete={handleEvaluationComplete} systemPrompt={systemPrompt} thresholds={thresholds} onDeleteResume={handleDeleteResume} />} />
-        <Route path="/intake" element={<ApplicationsView applications={applications} forms={hiringForms} systemPrompt={systemPrompt} thresholds={thresholds} onEvaluationComplete={handleEvaluationComplete} onAppUpdate={(id, up) => setApplications(p => p.map(a => a.id === id ? { ...a, ...up } : a))} />} />
-        <Route path="/evaluations" element={<Evaluations evaluations={evaluations} forms={hiringForms} thresholds={thresholds} setThresholds={setThresholds} onUpdateStatus={handleUpdateCandidateStatus} />} />
-        <Route path="/evaluation/:id" element={<EvaluationDetail evaluations={evaluations} applications={applications} forms={hiringForms} onUpdateStatus={handleUpdateCandidateStatus} onAddFeedback={handleAddFeedback} />} />
-        <Route path="/fairness" element={<FairnessDashboard evaluations={evaluations} />} />
-        <Route path="/history" element={<HistoryView evaluations={evaluations} forms={hiringForms} />} />
-      </Routes>
-    </AppShell>
-  );
 
-  return layout;
+      <Route element={<ProtectedRoute />}>
+        <Route path="/*" element={
+          <AppShell>
+            <Routes>
+              <Route path="/" element={<Dashboard forms={hiringForms} resumes={resumes} evaluations={evaluations} />} />
+              <Route path="/forms" element={<HiringForms forms={hiringForms} onAdd={f => setHiringForms([f, ...hiringForms])} onUpdate={f => setHiringForms(prev => prev.map(old => old.id === f.id ? f : old))} onSetActive={setActiveFormId} activeId={activeFormId} />} />
+              <Route path="/prompts" element={<Prompts prompt={systemPrompt} setPrompt={setSystemPrompt} />} />
+              <Route path="/emails" element={<EmailConfig templates={emailTemplates} onUpdate={setEmailTemplates} />} />
+              <Route path="/uploads" element={<Uploads activeForm={activeRole} forms={hiringForms} resumes={resumes} onUpload={handleManualUpload} onStatusUpdate={handleManualStatusUpdate} onComplete={handleEvaluationComplete} systemPrompt={systemPrompt} thresholds={thresholds} onDeleteResume={handleDeleteResume} />} />
+              <Route path="/intake" element={<ApplicationsView applications={applications} forms={hiringForms} systemPrompt={systemPrompt} thresholds={thresholds} onEvaluationComplete={handleEvaluationComplete} onAppUpdate={(id, up) => setApplications(p => p.map(a => a.id === id ? { ...a, ...up } : a))} />} />
+              <Route path="/evaluations" element={<Evaluations evaluations={evaluations} forms={hiringForms} thresholds={thresholds} setThresholds={setThresholds} onUpdateStatus={handleUpdateCandidateStatus} />} />
+              <Route path="/evaluation/:id" element={<EvaluationDetail evaluations={evaluations} applications={applications} forms={hiringForms} onUpdateStatus={handleUpdateCandidateStatus} onAddFeedback={handleAddFeedback} />} />
+              <Route path="/fairness" element={<FairnessDashboard evaluations={evaluations} />} />
+              <Route path="/history" element={<HistoryView evaluations={evaluations} forms={hiringForms} />} />
+            </Routes>
+          </AppShell>
+        } />
+      </Route>
+    </Routes>
+  );
 };
 
 const App: React.FC = () => {
   return (
     <HashRouter>
-      <AppContent />
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
     </HashRouter>
   );
 };

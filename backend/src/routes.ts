@@ -2,10 +2,10 @@
 import { Router } from 'express';
 import { evaluateResume } from './ai/evaluation-engine/geminiService';
 
-const router = Router();
-
 import { register, login, logout, refresh } from './controllers/authController';
 import { protect, authorize } from './middleware/authMiddleware';
+
+// Auth Routes
 
 const router = Router();
 
